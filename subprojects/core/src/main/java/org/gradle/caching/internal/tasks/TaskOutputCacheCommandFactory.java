@@ -24,6 +24,7 @@ import com.google.common.collect.Iterables;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.UncheckedIOException;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RelativePath;
 import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.internal.cache.StringInterner;
@@ -39,7 +40,6 @@ import org.gradle.api.internal.changedetection.state.OutputPathNormalizationStra
 import org.gradle.api.internal.tasks.OriginTaskExecutionMetadata;
 import org.gradle.api.internal.tasks.ResolvedTaskOutputFilePropertySpec;
 import org.gradle.api.internal.tasks.execution.TaskOutputsGenerationListener;
-import org.gradle.api.internal.tasks.execution.TaskProperties;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.caching.BuildCacheKey;
@@ -81,8 +81,8 @@ public class TaskOutputCacheCommandFactory {
         this.stringInterner = stringInterner;
     }
 
-    public BuildCacheLoadCommand<OriginTaskExecutionMetadata> createLoad(TaskOutputCachingBuildCacheKey cacheKey, SortedSet<ResolvedTaskOutputFilePropertySpec> outputProperties, TaskInternal task, TaskProperties taskProperties, TaskOutputsGenerationListener taskOutputsGenerationListener, TaskArtifactState taskArtifactState) {
-        return new LoadCommand(cacheKey, outputProperties, task, taskProperties, taskOutputsGenerationListener, taskArtifactState);
+    public BuildCacheLoadCommand<OriginTaskExecutionMetadata> createLoad(TaskOutputCachingBuildCacheKey cacheKey, SortedSet<ResolvedTaskOutputFilePropertySpec> outputProperties, TaskInternal task, FileCollection localStateFiles, TaskOutputsGenerationListener taskOutputsGenerationListener, TaskArtifactState taskArtifactState) {
+        return new LoadCommand(cacheKey, outputProperties, task, localStateFiles, taskOutputsGenerationListener, taskArtifactState);
     }
 
     public BuildCacheStoreCommand createStore(TaskOutputCachingBuildCacheKey cacheKey, SortedSet<ResolvedTaskOutputFilePropertySpec> outputProperties, Map<String, Map<String, FileContentSnapshot>> outputSnapshots, TaskInternal task, long taskExecutionTime) {
@@ -94,15 +94,15 @@ public class TaskOutputCacheCommandFactory {
         private final TaskOutputCachingBuildCacheKey cacheKey;
         private final SortedSet<ResolvedTaskOutputFilePropertySpec> outputProperties;
         private final TaskInternal task;
-        private final TaskProperties taskProperties;
+        private final FileCollection localStateFiles;
         private final TaskOutputsGenerationListener taskOutputsGenerationListener;
         private final TaskArtifactState taskArtifactState;
 
-        private LoadCommand(TaskOutputCachingBuildCacheKey cacheKey, SortedSet<ResolvedTaskOutputFilePropertySpec> outputProperties, TaskInternal task, TaskProperties taskProperties, TaskOutputsGenerationListener taskOutputsGenerationListener, TaskArtifactState taskArtifactState) {
+        private LoadCommand(TaskOutputCachingBuildCacheKey cacheKey, SortedSet<ResolvedTaskOutputFilePropertySpec> outputProperties, TaskInternal task, FileCollection localStateFiles, TaskOutputsGenerationListener taskOutputsGenerationListener, TaskArtifactState taskArtifactState) {
             this.cacheKey = cacheKey;
             this.outputProperties = outputProperties;
             this.task = task;
-            this.taskProperties = taskProperties;
+            this.localStateFiles = localStateFiles;
             this.taskOutputsGenerationListener = taskOutputsGenerationListener;
             this.taskArtifactState = taskArtifactState;
         }
@@ -188,7 +188,7 @@ public class TaskOutputCacheCommandFactory {
         }
 
         private void cleanLocalState() {
-            for (File localStateFile : taskProperties.getLocalStateFiles()) {
+            for (File localStateFile : localStateFiles) {
                 try {
                     remove(localStateFile);
                 } catch (IOException ex) {
